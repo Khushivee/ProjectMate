@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Join Requests{% endblock %}
+
+{% block content %}
+<div class="container fade-in">
+    <h1>Incoming Join Requests</h1>
+    <p>Manage requests from users who want to collaborate on your projects.</p>
+
+    <div class="request-list">
+        {% for req in requests %}
+        <div class="request-card slide-up">
+            <div class="request-info">
+                <p>
+                    <strong>{{ req.requester.username }}</strong> wants to join your project: 
+                    <strong>{{ req.project.title }}</strong>
+                </p>
+                <p><strong>Requester Skills:</strong> {{ req.requester.skills or 'Not specified' }}</p>
+            </div>
+            <div class="request-actions">
+                <form action="{{ url_for('handle_request', request_id=req.id, action='accept') }}" method="POST">
+                    <button type="submit" class="glowing-btn">Accept</button>
+                </form>
+                <form action="{{ url_for('handle_request', request_id=req.id, action='reject') }}" method="POST">
+                    <button type="submit" class="btn-danger">Reject</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <p>You have no pending join requests.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

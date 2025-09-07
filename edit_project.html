@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Edit Project{% endblock %}
+
+{% block content %}
+<div class="form-container fade-in">
+    <h2>Edit Project</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" name="title" value="{{ project.title }}" required>
+        </div>
+        <div class="form-group">
+            <label>Purpose</label>
+            <textarea name="purpose" rows="3" required>{{ project.purpose }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Problem Statement</label>
+            <textarea name="problem_statement" rows="5" required>{{ project.problem_statement }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Domain</label>
+            <input type="text" name="domain" value="{{ project.domain }}" required>
+        </div>
+        <div class="form-group">
+            <label>Skills Required</label>
+            <input type="text" name="skills_required" value="{{ project.skills_required }}" required>
+        </div>
+        <div class="form-group">
+            <label>Skills You Have</label>
+            <input type="text" name="skills_you_have" value="{{ project.skills_you_have }}" required>
+        </div>
+        <button type="submit" class="glowing-btn">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

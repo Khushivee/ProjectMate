@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="form-container fade-in">
+    <h2>Welcome Back!</h2>
+    <p>Log in to find your next project partner.</p>
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" name="username" id="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+        <button type="submit" class="glowing-btn">Login</button>
+    </form>
+    <p class="form-switch">Don't have an account? <a href="{{ url_for('signup') }}">Sign Up</a></p>
+</div>
+{% endblock %}

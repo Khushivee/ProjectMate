@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="form-container fade-in">
+    <h2>Join ProjectMate</h2>
+    <p>Start your collaboration journey today.</p>
+    <form method="POST" action="{{ url_for('signup') }}">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" name="username" id="username" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email (Optional)</label>
+            <input type="email" name="email" id="email">
+        </div>
+        <div class="form-group">
+            <label for="phone">Phone Number (Optional)</label>
+            <input type="tel" name="phone_number" id="phone">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+        <button type="submit" class="glowing-btn">Create Account</button>
+    </form>
+    <p class="form-switch">Already have an account? <a href="{{ url_for('login') }}">Log In</a></p>
+</div>
+{% endblock %}

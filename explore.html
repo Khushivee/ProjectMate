@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Explore Projects{% endblock %}
+
+{% block content %}
+<div class="container fade-in">
+    <h1>Explore Projects</h1>
+    <p>Find your next big thing. Collaborate with peers on exciting projects.</p>
+
+    <form class="filter-form" method="GET" action="{{ url_for('explore') }}">
+        <input type="text" name="search" placeholder="Search by keyword..." value="{{ request.args.get('search', '') }}">
+        <input type="text" name="domain" placeholder="Filter by domain..." value="{{ request.args.get('domain', '') }}">
+        <input type="text" name="skills" placeholder="Filter by skills..." value="{{ request.args.get('skills', '') }}">
+        <button type="submit" class="glowing-btn">Search</button>
+    </form>
+
+    <div class="project-grid">
+        {% for project in projects %}
+        <div class="project-card slide-up">
+            <h3>{{ project.title }}</h3>
+            <p class="project-creator">by {{ project.creator.username }}</p>
+            <p><strong>Domain:</strong> {{ project.domain }}</p>
+            <p class="project-purpose">{{ project.purpose | truncate(100) }}</p>
+            <p><strong>Skills Required:</strong></p>
+            <div class="skills-tags">
+                {% for skill in project.skills_required.split(',') %}
+                    <span class="skill-tag">{{ skill.strip() }}</span>
+                {% endfor %}
+            </div>
+            
+            {% if current_user.is_authenticated and project.creator_id != current_user.id %}
+            <div class="card-actions">
+                <form action="{{ url_for('send_request', project_id=project.id) }}" method="POST">
+                    <button type="submit" class="glowing-btn">Request to Join</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p>No projects found. Try adjusting your filters!</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

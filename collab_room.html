@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Collaboration Room{% endblock %}
+
+{% block content %}
+<div class="container fade-in collab-container">
+    <h1>Collab Room: {{ room.project.title }}</h1>
+    
+    <p>Working with: 
+        {% for member in room.members %}
+            {% if member.id != current_user.id %}
+                <strong>{{ member.username }}</strong>
+            {% endif %}
+        {% endfor %}
+    </p>
+
+    <div class="collaborator-info" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+        <h2>Collaborator's Contact Info</h2>
+        {% for member in room.members %}
+            {% if member.id != current_user.id %}
+                <p><strong>Username:</strong> {{ member.username }}</p>
+                {% if member.email %}
+                    <p><strong>Email:</strong> {{ member.email }}</p>
+                {% else %}
+                    <p><strong>Email:</strong> Not provided</p>
+                {% endif %}
+                {% if member.phone_number %}
+                    <p><strong>Phone:</strong> {{ member.phone_number }}</p>
+                {% else %}
+                    <p><strong>Phone:</strong> Not provided</p>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="collab-grid">
+        <div class="collab-notes">
+            <h2>Shared Notes</h2>
+            <div id="shared-notes" contenteditable="true" class="notes-editor">
+                {{ room.notes | safe }}
+            </div>
+        </div>
+
+        <div class="collab-chat">
+            <h2>Live Chat</h2>
+            <div id="chat-messages" class="chat-messages">
+                {% for message in messages %}
+                <div class="message {% if message.user_id == current_user.id %}my-message{% endif %}">
+                    <strong>{{ message.sender.username }}</strong>
+                    <p>{{ message.content }}</p>
+                    <span class="timestamp">{{ message.timestamp.strftime('%I:%M %p') }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <form id="chat-form" class="chat-form">
+                <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="collab-uploads" style="margin-top: 2rem;">
+        <h2>Shared Files</h2>
+        <form id="file-upload-form">
+            <input type="file" id="file-input" name="file">
+            <button type="submit" class="glowing-btn">Upload File</button>
+        </form>
+        <div id="file-gallery" class="file-gallery">
+            {% for file_record in room.images %}
+                {% set filename = file_record.filename %}
+                {% set original_filename = file_record.filename %}
+                {% set extension = filename.split('.')[-1].lower() %}
+
+                <div class="uploaded-file-item">
+                    {% if extension in ['png', 'jpg', 'jpeg', 'gif'] %}
+                        <img src="{{ url_for('static', filename='uploads/' + filename) }}" alt="{{ original_filename }}">
+                    {% else %}
+                        <a href="{{ url_for('static', filename='uploads/' + filename) }}" target="_blank" class="file-link">
+                            <span class="file-icon">{{ extension.upper() }}</span>
+                            <span>{{ original_filename }}</span>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const socket = io();
+        const roomId = "{{ room.id }}";
+        const notesEditor = document.getElementById('shared-notes');
+        const fileUploadForm = document.getElementById('file-upload-form');
+        const fileInput = document.getElementById('file-input');
+        const fileGallery = document.getElementById('file-gallery');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        scrollToBottom();
+
+        socket.on('connect', () => {
+            socket.emit('join_room', { room: roomId });
+        });
+
+        let typingTimer;
+        const doneTypingInterval = 1000;
+
+        notesEditor.addEventListener('keyup', () => {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => {
+                socket.emit('text_update', {
+                    room: roomId,
+                    text: notesEditor.innerHTML
+                });
+            }, doneTypingInterval);
+        });
+
+        socket.on('update_text', (data) => {
+            const currentCursorPosition = getCaretPosition(notesEditor);
+            notesEditor.innerHTML = data.text;
+            setCaretPosition(notesEditor, currentCursorPosition);
+        });
+
+        fileUploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetch("{{ url_for('collab_room', room_id=room.id) }}", {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    fileInput.value = '';
+                } else {
+                    alert('Upload failed: ' + data.error);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+        
+        socket.on('new_file_added', (data) => {
+            if (data.room === roomId) {
+                const fileItemDiv = document.createElement('div');
+                fileItemDiv.classList.add('uploaded-file-item');
+
+                const filename = data.filename;
+                const originalFilename = data.original_filename;
+                const extension = filename.split('.').pop().toLowerCase();
+
+                if (['png', 'jpg', 'jpeg', 'gif'].includes(extension)) {
+                    fileItemDiv.innerHTML = `<img src="/static/uploads/${filename}" alt="${originalFilename}">`;
+                } else {
+                    fileItemDiv.innerHTML = `
+                        <a href="/static/uploads/${filename}" target="_blank" class="file-link">
+                            <span class="file-icon">${extension.toUpperCase()}</span>
+                            <span>${originalFilename}</span>
+                        </a>
+                    `;
+                }
+                fileGallery.appendChild(fileItemDiv);
+            }
+        });
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const msg = chatInput.value.trim();
+            if (msg) {
+                socket.emit('send_message', { 'msg': msg, 'room': roomId });
+                chatInput.value = '';
+            }
+        });
+
+        socket.on('new_message', (data) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            if (data.username === "{{ current_user.username }}") {
+                messageDiv.classList.add('my-message');
+            }
+            messageDiv.innerHTML = `
+                <strong>${data.username}</strong>
+                <p>${data.msg}</p>
+                <span class="timestamp">${data.timestamp}</span>
+            `;
+            chatMessages.appendChild(messageDiv);
+scrollToBottom();
+        });
+
+        function getCaretPosition(element) {
+            let position = 0;
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const preCaretRange = range.cloneRange();
+                preCaretRange.selectNodeContents(element);
+                preCaretRange.setEnd(range.endContainer, range.endOffset);
+                position = preCaretRange.toString().length;
+            }
+            return position;
+        }
+
+        function setCaretPosition(element, position) {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            let charIndex = 0;
+            const treeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+
+            while (node = treeWalker.nextNode()) {
+                const nodeLength = node.length;
+                if (charIndex + nodeLength >= position) {
+                    range.setStart(node, position - charIndex);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    break;
+                }
+                charIndex += nodeLength;
+            }
+        }
+    });
+</script>
+{% endblock %}
